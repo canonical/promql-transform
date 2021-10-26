@@ -28,6 +28,10 @@ func Transform(arg string, matchers *map[string]string) (string, error) {
 		return "", err
 	}
 
+	if e, ok := exp.(*pp.VectorSelector); ok {
+		InjectLabelMatcher(e, matchers)
+	}
+
 	TraverseNode(exp, matchers)
 	return exp.String(), nil
 }
