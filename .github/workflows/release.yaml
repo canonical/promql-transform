@@ -1,0 +1,116 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write  # Enable the creation of GitHub releases
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.16.x
+      - name: Install linter
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.42.1
+      - name: Lint files
+        run: |
+          golangci-lint run
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.16.x
+      - name: Run tests
+        run: |
+          go test ./... -coverprofile coverage.out
+  build:
+    name: Release
+    runs-on: ubuntu-latest
+    needs: 
+      - test
+      - lint
+    env:
+      CGO_ENABLED: 0
+      TAG: ${{ github.event.release.tag_name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.16.x
+      - name: Install charmcraft
+        run: |
+          sudo snap install charmcraft --classic
+      - name: Retrieve current revision number
+        id: getrev
+        # Get the latest amd64 revision in CharmHub and increments it by one.
+        # This assumes that the amd64 and arm64 revisions are in lockstep.
+        run: |
+          echo "::set-output name=rev::$(($(charmcraft resource-revisions prometheus-k8s promql-transform-amd64 | tail -n+2 | head -1 | awk '{ print $1 }') + 1))"
+      - name: Create artifacts
+        uses: goreleaser/goreleaser-action@v2
+        with:
+          distribution: goreleaser
+          version: latest
+          # Build on snapshot to avoid problems with our non SemVer tags
+          args: release --snapshot
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # At this point we still don't have a tag. It is just as well, because
+      # we do not want a SemVer tag, and having a non SemVer tag would break
+      # GoReleaser (https://goreleaser.com/limitations/semver/).
+      - name: Upload amd64 assets
+        uses: actions/upload-artifact@v3
+        with:
+          name: promql-transform-amd64
+          path: dist/promql-transform_linux_amd64/promql-transform
+      - name: Upload arm64 assets
+        uses: actions/upload-artifact@v3
+        with:
+          name: promql-transform-arm64
+          path: dist/promql-transform_linux_arm64/promql-transform
+      - name: Create tag
+        uses: rickstaa/action-create-tag@v1
+        with:
+          tag: "rev${{ steps.getrev.outputs.rev }}"
+          message: "Revision ${{ steps.getrev.outputs.rev }}"
+      - name: Create GitHub release
+        uses: ncipollo/release-action@v1
+        with:
+          name: "Revision ${{ steps.getrev.outputs.rev }}"
+          omitBody: true
+          artifacts: "promql-transform-*"
+          tag: "rev${{ steps.getrev.outputs.rev }}"
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload amd64 resource revision to CharmHub
+        env:
+          CHARMCRAFT_AUTH: ${{ secrets.CHARMHUB_TOKEN }}
+        run: |
+          charmcraft upload-resource prometheus-k8s promql-transform-amd64 --file dist/promql-transform_linux_amd64/promql-transform
+      - name: Upload arm64 resource revision to CharmHub
+        env:
+          CHARMCRAFT_AUTH: ${{ secrets.CHARMHUB_TOKEN }}
+        run: |
+          charmcraft upload-resource prometheus-k8s promql-transform-arm64 --file dist/promql-transform_linux_arm64/promql-transform

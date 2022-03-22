@@ -1,12 +1,8 @@
-name: Release
+name: Validate
 
 on:
-  workflow_dispatch: {}
-  release:
-    types:
-      - created
-    tags:
-      - '*'
+  pull_request:
+
 jobs:
   lint:
     name: Lint
