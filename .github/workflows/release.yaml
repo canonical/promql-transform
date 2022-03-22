@@ -54,8 +54,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
+        # Do not use fetch-depth 0 as suggested by Goreleaser,
+        # because we run with --snapshot and do not want issues with
+        # our non-SemVer tags
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
@@ -65,6 +66,8 @@ jobs:
           sudo snap install charmcraft --classic
       - name: Retrieve current revision number
         id: getrev
+        env:
+          CHARMCRAFT_AUTH: ${{ secrets.CHARMHUB_TOKEN }}
         # Get the latest amd64 revision in CharmHub and increments it by one.
         # This assumes that the amd64 and arm64 revisions are in lockstep.
         run: |
@@ -75,7 +78,7 @@ jobs:
           distribution: goreleaser
           version: latest
           # Build on snapshot to avoid problems with our non SemVer tags
-          args: release --snapshot
+          args: --snapshot
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       # At this point we still don't have a tag. It is just as well, because
@@ -96,21 +99,26 @@ jobs:
         with:
           tag: "rev${{ steps.getrev.outputs.rev }}"
           message: "Revision ${{ steps.getrev.outputs.rev }}"
+      - name: Prepare artifacts for attachment to release
+        run: |
+          mkdir -p artifacts/
+          mv dist/promql-transform_linux_amd64/promql-transform artifacts/promql-transform-amd64
+          mv dist/promql-transform_linux_arm64/promql-transform artifacts/promql-transform-arm64
       - name: Create GitHub release
         uses: ncipollo/release-action@v1
         with:
           name: "Revision ${{ steps.getrev.outputs.rev }}"
-          omitBody: true
-          artifacts: "promql-transform-*"
+          omitBody: "true"
+          artifacts: "artifacts/*"
           tag: "rev${{ steps.getrev.outputs.rev }}"
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Upload amd64 resource revision to CharmHub
         env:
           CHARMCRAFT_AUTH: ${{ secrets.CHARMHUB_TOKEN }}
         run: |
-          charmcraft upload-resource prometheus-k8s promql-transform-amd64 --filepath dist/promql-transform_linux_amd64/promql-transform
+          charmcraft upload-resource prometheus-k8s promql-transform-amd64 --file artifacts/promql-transform-amd64
       - name: Upload arm64 resource revision to CharmHub
         env:
           CHARMCRAFT_AUTH: ${{ secrets.CHARMHUB_TOKEN }}
         run: |
-          charmcraft upload-resource prometheus-k8s promql-transform-arm64 --filepath dist/promql-transform_linux_arm64/promql-transform
+          charmcraft upload-resource prometheus-k8s promql-transform-arm64 --file artifacts/promql-transform-arm64

@@ -49,8 +49,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
+        # Do not use fetch-depth 0 as suggested by Goreleaser,
+        # because we run with --snapshot and do not want issues with
+        # our non-SemVer tags
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
