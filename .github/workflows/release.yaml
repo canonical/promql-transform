@@ -108,9 +108,9 @@ jobs:
         env:
           CHARMCRAFT_AUTH: ${{ secrets.CHARMHUB_TOKEN }}
         run: |
-          charmcraft upload-resource prometheus-k8s promql-transform-amd64 --file dist/promql-transform_linux_amd64/promql-transform
+          charmcraft upload-resource prometheus-k8s promql-transform-amd64 --filepath dist/promql-transform_linux_amd64/promql-transform
       - name: Upload arm64 resource revision to CharmHub
         env:
           CHARMCRAFT_AUTH: ${{ secrets.CHARMHUB_TOKEN }}
         run: |
-          charmcraft upload-resource prometheus-k8s promql-transform-arm64 --file dist/promql-transform_linux_arm64/promql-transform
+          charmcraft upload-resource prometheus-k8s promql-transform-arm64 --filepath dist/promql-transform_linux_arm64/promql-transform
