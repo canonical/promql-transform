@@ -49,6 +49,16 @@ func TraverseNode(exp pp.Node, matchers *map[string]string) {
 
 func InjectLabelMatcher(e *pp.VectorSelector, matchers *map[string]string) {
 	for key, val := range *matchers {
+		var found = false
+		for _, existing := range e.LabelMatchers {
+			if existing.Name == key {
+				found = true
+				break
+			}
+		}
+		if found {
+			continue
+		}
 		e.LabelMatchers = append(
 			e.LabelMatchers,
 			&labels.Matcher{

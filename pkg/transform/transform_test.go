@@ -40,6 +40,16 @@ func TestShouldApplyLabelMatcherToVectorSelector(t *testing.T) {
 			Matchers: map[string]string{"firstname": "Franz"},
 			Expected: `sum by(consumergroup) (kafka_consumergroup_lag{firstname="Franz"}) > 50`,
 		},
+		{
+			Input:    `up{cool="breeze",hot="sunrays"} == 0`,
+			Matchers: map[string]string{"cool": "stuff"},
+			Expected: `up{cool="breeze",hot="sunrays"} == 0`,
+		},
+		{
+			Input:    `up{cool="breeze",hot="sunrays"} == 0`,
+			Matchers: map[string]string{"cool": "stuff", "dance": "macarena"},
+			Expected: `up{cool="breeze",dance="macarena",hot="sunrays"} == 0`,
+		},
 	}
 	for _, c := range cases {
 		out, err := transform.Transform(c.Input, &c.Matchers)
