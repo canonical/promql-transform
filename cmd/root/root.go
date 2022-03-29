@@ -40,7 +40,7 @@ var app = &cli.App{
 
 		}
 
-		fmt.Println(output)
+		fmt.Print(output)
 		return nil
 	},
 }
