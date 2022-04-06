@@ -19,7 +19,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/prometheus/prometheus/pkg/labels"
+	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/storage"
 )
 
@@ -316,6 +316,18 @@ func Walk(v Visitor, node Node, path []Node) error {
 	return err
 }
 
+func ExtractSelectors(expr Expr) [][]*labels.Matcher {
+	var selectors [][]*labels.Matcher
+	Inspect(expr, func(node Node, _ []Node) error {
+		vs, ok := node.(*VectorSelector)
+		if ok {
+			selectors = append(selectors, vs.LabelMatchers)
+		}
+		return nil
+	})
+	return selectors
+}
+
 type inspector func(Node, []Node) error
 
 func (f inspector) Visit(node Node, path []Node) (Visitor, error) {
@@ -395,7 +407,7 @@ type PositionRange struct {
 // mergeRanges is a helper function to merge the PositionRanges of two Nodes.
 // Note that the arguments must be in the same order as they
 // occur in the input string.
-func mergeRanges(first Node, last Node) PositionRange {
+func mergeRanges(first, last Node) PositionRange {
 	return PositionRange{
 		Start: first.PositionRange().Start,
 		End:   last.PositionRange().End,
@@ -414,15 +426,19 @@ func (i *Item) PositionRange() PositionRange {
 func (e *AggregateExpr) PositionRange() PositionRange {
 	return e.PosRange
 }
+
 func (e *BinaryExpr) PositionRange() PositionRange {
 	return mergeRanges(e.LHS, e.RHS)
 }
+
 func (e *Call) PositionRange() PositionRange {
 	return e.PosRange
 }
+
 func (e *EvalStmt) PositionRange() PositionRange {
 	return e.Expr.PositionRange()
 }
+
 func (e Expressions) PositionRange() PositionRange {
 	if len(e) == 0 {
 		// Position undefined.
@@ -433,33 +449,40 @@ func (e Expressions) PositionRange() PositionRange {
 	}
 	return mergeRanges(e[0], e[len(e)-1])
 }
+
 func (e *MatrixSelector) PositionRange() PositionRange {
 	return PositionRange{
 		Start: e.VectorSelector.PositionRange().Start,
 		End:   e.EndPos,
 	}
 }
+
 func (e *SubqueryExpr) PositionRange() PositionRange {
 	return PositionRange{
 		Start: e.Expr.PositionRange().Start,
 		End:   e.EndPos,
 	}
 }
+
 func (e *NumberLiteral) PositionRange() PositionRange {
 	return e.PosRange
 }
+
 func (e *ParenExpr) PositionRange() PositionRange {
 	return e.PosRange
 }
+
 func (e *StringLiteral) PositionRange() PositionRange {
 	return e.PosRange
 }
+
 func (e *UnaryExpr) PositionRange() PositionRange {
 	return PositionRange{
 		Start: e.StartPos,
 		End:   e.Expr.PositionRange().End,
 	}
 }
+
 func (e *VectorSelector) PositionRange() PositionRange {
 	return e.PosRange
 }

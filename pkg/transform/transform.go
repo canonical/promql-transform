@@ -4,7 +4,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/prometheus/prometheus/pkg/labels"
+	"github.com/prometheus/prometheus/model/labels"
 	pp "github.com/prometheus/prometheus/promql/parser"
 )
 
