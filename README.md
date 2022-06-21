@@ -1,3 +1,8 @@
+> ### ⚠️ Deprecated
+> This tool has been deprecated in favor of [cos-tool](https://github.com/canonical/cos-tool/),
+> which in addition to being able to everything this tool does, also is able to validate alert rules and expressions,
+> as well as operate on logql expressions.
+
 # promql-transform
 
 Transforms PromQL expressions on the fly
